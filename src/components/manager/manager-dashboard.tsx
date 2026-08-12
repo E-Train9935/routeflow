@@ -16,6 +16,10 @@ import {
 } from "@/components/manager/new-trip-modal"
 
 import {
+  RoutePlanner,
+} from "@/components/manager/route-planner"
+
+import {
   TeamMap,
 } from "@/components/manager/team-map"
 
@@ -32,10 +36,6 @@ import type {
   WorkerCardData,
   WorkerStatus,
 } from "@/types/operations"
-
-import {
-  RoutePlanner,
-} from "@/components/manager/route-planner"
 
 type Props = {
   workers: WorkerCardData[]
@@ -64,6 +64,7 @@ type OpenTripRow = {
     | "arrived"
 
   created_at: string
+
   route_position:
     number | null
 }
@@ -94,6 +95,7 @@ function toTripSummary(
 
     createdAt:
       trip.created_at,
+
     routePosition:
       trip.route_position,
   }
@@ -111,10 +113,11 @@ function applyTripsToWorker(
     )
 
   /*
-   * An active journey wins.
+   * A trip that is actually being
+   * worked always wins.
    *
    * Otherwise the first assigned
-   * trip is the next job.
+   * trip becomes Up Next.
    */
   const currentTrip =
     workerTrips.find(
@@ -164,11 +167,8 @@ function applyTripsToWorker(
     queuedTrips,
 
     /*
-     * Keep initial GPS data only
-     * while this worker is en route.
-     *
-     * TeamMap has its own realtime
-     * location subscription.
+     * TeamMap owns the live location
+     * subscription after initial load.
      */
     currentLocation:
       currentTrip?.status ===
@@ -211,19 +211,11 @@ export function ManagerDashboard({
     >("connecting")
 
   /*
-   * Listen for any trip lifecycle
-   * change in this manager's
-   * organization.
-   *
-   * Rather than trying to mutate
-   * one worker card from one event,
-   * reload the small open-trip set.
-   *
-   * This correctly handles queues.
+   * Keep the manager's worker queues
+   * synchronized with Supabase.
    */
   useEffect(() => {
     let mounted = true
-
     let latestRequest = 0
 
     async function refreshTeamTrips() {
@@ -260,14 +252,13 @@ export function ManagerDashboard({
           .order(
             "route_position",
             {
-                ascending:
+              ascending:
                 true,
 
-                nullsFirst:
+              nullsFirst:
                 false,
             }
           )
-
           .order(
             "created_at",
             {
@@ -345,11 +336,6 @@ export function ManagerDashboard({
                 "connected"
               )
 
-              /*
-               * Close the tiny gap
-               * between server render
-               * and realtime subscribe.
-               */
               void refreshTeamTrips()
 
               return
@@ -387,7 +373,8 @@ export function ManagerDashboard({
     ).length
 
   /*
-   * Count JOBS rather than workers.
+   * This counts waiting jobs,
+   * not workers.
    */
   const queuedTripCount =
     team.reduce(
@@ -431,52 +418,52 @@ export function ManagerDashboard({
       .toUpperCase()
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-zinc-50 text-zinc-950">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-950">
+    <main className="min-h-dvh overflow-x-hidden bg-zinc-50 text-zinc-950">
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-950">
               <NavigationLogo />
             </div>
 
-            <span className="text-lg font-semibold tracking-tight">
+            <span className="truncate text-lg font-semibold tracking-tight">
               RouteFlow
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {tripRealtimeStatus ===
             "connected" ? (
-              <div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:flex">
+              <div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 min-[380px]:flex">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
 
                 Live sync
               </div>
             ) : tripRealtimeStatus ===
               "error" ? (
-              <div className="hidden items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 sm:flex">
+              <div className="hidden items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 min-[380px]:flex">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
 
-                Sync unavailable
+                Offline
               </div>
             ) : (
-              <div className="hidden items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500 sm:flex">
+              <div className="hidden items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500 min-[380px]:flex">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-zinc-400" />
 
                 Connecting
               </div>
             )}
 
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold">
               {managerInitials}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-zinc-500">
               Operations
             </p>
@@ -485,10 +472,10 @@ export function ManagerDashboard({
               Your team
             </h1>
 
-            <p className="mt-2 text-sm text-zinc-500">
-              Dispatch jobs, manage
-              worker queues, and track
-              active customer ETAs.
+            <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
+              Dispatch jobs, organize worker
+              routes, and monitor live
+              customer ETAs.
             </p>
           </div>
 
@@ -499,7 +486,7 @@ export function ManagerDashboard({
                 true
               )
             }
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
+            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-5 text-sm font-semibold text-white shadow-sm transition active:scale-[0.99] sm:h-11 sm:w-auto sm:rounded-xl"
           >
             <Plus className="h-4 w-4" />
 
@@ -507,7 +494,7 @@ export function ManagerDashboard({
           </button>
         </div>
 
-        <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <section className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 lg:grid-cols-4">
           <SummaryCard
             label="Team members"
             value={
@@ -549,7 +536,7 @@ export function ManagerDashboard({
           />
         </section>
 
-        <section className="mt-8">
+        <section className="mt-6 min-w-0 sm:mt-8">
           <TeamMap
             workers={
               team
@@ -557,22 +544,26 @@ export function ManagerDashboard({
           />
         </section>
 
-        <section className="mt-8">
-            <RoutePlanner
-                workers={
-                  team
-                }
-            />
+        <section className="mt-6 min-w-0 sm:mt-8">
+          <RoutePlanner
+            workers={
+              team
+            }
+          />
         </section>
 
-        <section className="mt-10">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-8 min-w-0 sm:mt-10">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="font-semibold">
               Team
             </h2>
 
-            <span className="text-sm text-zinc-500">
-              {team.length} members
+            <span className="shrink-0 text-sm text-zinc-500">
+              {team.length}{" "}
+              {team.length ===
+              1
+                ? "member"
+                : "members"}
             </span>
           </div>
 
@@ -620,14 +611,18 @@ function SummaryCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
-      <div className="flex items-center gap-2 text-xs text-zinc-500 sm:text-sm">
-        {icon}
+    <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+      <div className="flex min-w-0 items-center gap-2 text-xs text-zinc-500 sm:text-sm">
+        <span className="shrink-0">
+          {icon}
+        </span>
 
-        {label}
+        <span className="truncate">
+          {label}
+        </span>
       </div>
 
-      <p className="mt-3 text-2xl font-semibold">
+      <p className="mt-2 text-2xl font-semibold sm:mt-3">
         {value}
       </p>
     </div>
@@ -642,6 +637,7 @@ function NavigationLogo() {
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
+      aria-hidden="true"
     >
       <path
         d="M5 19 19 5M9 5h10v10"

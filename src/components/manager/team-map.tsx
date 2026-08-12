@@ -37,7 +37,8 @@ type RealtimeLocationRow = {
   worker_id: string
   latitude: number
   longitude: number
-  accuracy_meters: number | null
+  accuracy_meters:
+    number | null
   updated_at: string
 }
 
@@ -53,12 +54,16 @@ type RouteInfo = {
 }
 
 type RouteApiResponse =
-  Omit<RouteInfo, "calculatedAt">
+  Omit<
+    RouteInfo,
+    "calculatedAt"
+  >
 
-type RouteByWorker = Record<
-  string,
-  RouteInfo
->
+type RouteByWorker =
+  Record<
+    string,
+    RouteInfo
+  >
 
 type RealtimeStatus =
   | "connecting"
@@ -68,17 +73,24 @@ type RealtimeStatus =
 function getInitialLocations(
   workers: WorkerCardData[]
 ) {
-  const result: Record<
-    string,
-    WorkerLocation
-  > = {}
+  const result:
+    Record<
+      string,
+      WorkerLocation
+    > = {}
 
-  for (const worker of workers) {
+  for (
+    const worker of
+    workers
+  ) {
     if (
-      worker.status === "en_route" &&
+      worker.status ===
+        "en_route" &&
       worker.currentLocation
     ) {
-      result[worker.id] =
+      result[
+        worker.id
+      ] =
         worker.currentLocation
     }
   }
@@ -87,18 +99,30 @@ function getInitialLocations(
 }
 
 function createDestinationMarkerElement(
-  minutes: number | null
+  minutes:
+    number | null
 ) {
   const wrapper =
-    document.createElement("div")
+    document.createElement(
+      "div"
+    )
 
-  wrapper.style.display = "flex"
-  wrapper.style.flexDirection = "column"
-  wrapper.style.alignItems = "center"
-  wrapper.style.gap = "5px"
+  wrapper.style.display =
+    "flex"
+
+  wrapper.style.flexDirection =
+    "column"
+
+  wrapper.style.alignItems =
+    "center"
+
+  wrapper.style.gap =
+    "5px"
 
   const etaElement =
-    document.createElement("div")
+    document.createElement(
+      "div"
+    )
 
   etaElement.textContent =
     minutes !== null
@@ -112,13 +136,13 @@ function createDestinationMarkerElement(
     "#ffffff"
 
   etaElement.style.fontSize =
-    "12px"
+    "11px"
 
   etaElement.style.fontWeight =
     "600"
 
   etaElement.style.padding =
-    "5px 9px"
+    "4px 8px"
 
   etaElement.style.borderRadius =
     "9999px"
@@ -130,10 +154,15 @@ function createDestinationMarkerElement(
     "0 2px 8px rgba(0, 0, 0, 0.18)"
 
   const pin =
-    document.createElement("div")
+    document.createElement(
+      "div"
+    )
 
-  pin.style.width = "20px"
-  pin.style.height = "20px"
+  pin.style.width =
+    "18px"
+
+  pin.style.height =
+    "18px"
 
   pin.style.borderRadius =
     "50% 50% 50% 0"
@@ -154,7 +183,9 @@ function createDestinationMarkerElement(
     etaElement
   )
 
-  wrapper.appendChild(pin)
+  wrapper.appendChild(
+    pin
+  )
 
   return {
     wrapper,
@@ -165,78 +196,110 @@ function createDestinationMarkerElement(
 export function TeamMap({
   workers,
 }: Props) {
-  /*
-   * STATE
-   */
-
   const [supabase] =
-    useState(() => createClient())
-
-  const [locations, setLocations] =
-    useState<
-      Record<string, WorkerLocation>
-    >(() =>
-      getInitialLocations(workers)
+    useState(
+      () =>
+        createClient()
     )
 
-  const [routes, setRoutes] =
-    useState<RouteByWorker>({})
+  const [
+    locations,
+    setLocations,
+  ] =
+    useState<
+      Record<
+        string,
+        WorkerLocation
+      >
+    >(
+      () =>
+        getInitialLocations(
+          workers
+        )
+    )
 
-  const [mapReady, setMapReady] =
+  const [
+    routes,
+    setRoutes,
+  ] =
+    useState<
+      RouteByWorker
+    >({})
+
+  const [
+    mapReady,
+    setMapReady,
+  ] =
     useState(false)
 
   const [
     realtimeStatus,
     setRealtimeStatus,
-  ] = useState<RealtimeStatus>(
-    "connecting"
-  )
-
-  /*
-   * REFS
-   */
+  ] =
+    useState<
+      RealtimeStatus
+    >("connecting")
 
   const mapContainerRef =
-    useRef<HTMLDivElement | null>(
-      null
-    )
+    useRef<
+      HTMLDivElement | null
+    >(null)
 
   const mapRef =
-    useRef<MapLibreMap | null>(
-      null
-    )
+    useRef<
+      MapLibreMap | null
+    >(null)
 
   const workerMarkersRef =
-    useRef<Map<string, Marker>>(
+    useRef<
+      Map<
+        string,
+        Marker
+      >
+    >(
       new Map()
     )
 
   const destinationMarkersRef =
-    useRef<Map<string, Marker>>(
+    useRef<
+      Map<
+        string,
+        Marker
+      >
+    >(
       new Map()
     )
 
   const destinationEtaElementsRef =
     useRef<
-      Map<string, HTMLDivElement>
-    >(new Map())
-
-  const lastRouteRequestRef =
-    useRef<Record<string, number>>(
-      {}
+      Map<
+        string,
+        HTMLDivElement
+      >
+    >(
+      new Map()
     )
 
+  const lastRouteRequestRef =
+    useRef<
+      Record<
+        string,
+        number
+      >
+    >({})
+
   const initialLocationsRef =
-    useRef(locations)
+    useRef(
+      locations
+    )
 
   /*
-   * EFFECT 2
-   *
-   * Create the MapLibre map.
+   * Create the map once.
    */
   useEffect(() => {
     if (
-      !mapContainerRef.current ||
+      !mapContainerRef
+        .current ||
       mapRef.current
     ) {
       return
@@ -244,7 +307,8 @@ export function TeamMap({
 
     const initialLocations =
       Object.values(
-        initialLocationsRef.current
+        initialLocationsRef
+          .current
       )
 
     const firstLocation =
@@ -253,42 +317,51 @@ export function TeamMap({
     const map =
       new MapLibreMap({
         container:
-          mapContainerRef.current,
+          mapContainerRef
+            .current,
 
         style:
           "https://tiles.openfreemap.org/styles/positron",
 
-        center: firstLocation
-          ? [
-              firstLocation.longitude,
-              firstLocation.latitude,
-            ]
-          : [
-              -117.1611,
-              32.7157,
-            ],
+        center:
+          firstLocation
+            ? [
+                firstLocation
+                  .longitude,
 
-        zoom: firstLocation
-          ? 12
-          : 10,
+                firstLocation
+                  .latitude,
+              ]
+            : [
+                -117.1611,
+                32.7157,
+              ],
 
-        attributionControl: {},
+        zoom:
+          firstLocation
+            ? 12
+            : 10,
+
+        attributionControl:
+          {},
       })
 
     map.addControl(
       new NavigationControl({
-        showCompass: false,
+        showCompass:
+          false,
       }),
       "top-right"
     )
 
-    map.on("load", () => {
-      console.log(
-        "RouteFlow map loaded successfully"
-      )
-
-      setMapReady(true)
-    })
+    map.on(
+      "load",
+      () => {
+        setMapReady(
+          true
+        )
+      }
+    )
 
     map.on(
       "error",
@@ -300,16 +373,20 @@ export function TeamMap({
       }
     )
 
-    mapRef.current = map
+    mapRef.current =
+      map
 
-        const workerMarkers =
-      workerMarkersRef.current
+    const workerMarkers =
+      workerMarkersRef
+        .current
 
     const destinationMarkers =
-      destinationMarkersRef.current
+      destinationMarkersRef
+        .current
 
     const destinationEtaElements =
-      destinationEtaElementsRef.current
+      destinationEtaElementsRef
+        .current
 
     return () => {
       for (
@@ -334,14 +411,13 @@ export function TeamMap({
 
       map.remove()
 
-      mapRef.current = null
+      mapRef.current =
+        null
     }
   }, [])
 
   /*
-   * EFFECT 3
-   *
-   * Create and move worker markers.
+   * Create / move worker markers.
    */
   useEffect(() => {
     const map =
@@ -353,17 +429,14 @@ export function TeamMap({
 
     const workerById =
       new Map(
-        workers.map((worker) => [
-          worker.id,
-          worker,
-        ])
+        workers.map(
+          (worker) => [
+            worker.id,
+            worker,
+          ]
+        )
       )
 
-    /*
-     * Only workers who are actively
-     * en route should appear as live
-     * markers.
-     */
     const activeWorkerIds =
       new Set(
         workers
@@ -371,7 +444,11 @@ export function TeamMap({
             (worker) =>
               worker.status ===
                 "en_route" &&
-              locations[worker.id]
+              Boolean(
+                locations[
+                  worker.id
+                ]
+              )
           )
           .map(
             (worker) =>
@@ -380,13 +457,16 @@ export function TeamMap({
       )
 
     /*
-     * Remove obsolete markers.
+     * Remove markers for workers
+     * who are no longer travelling.
      */
     for (
       const [
         workerId,
         marker,
-      ] of workerMarkersRef.current
+      ] of
+      workerMarkersRef
+        .current
     ) {
       if (
         !activeWorkerIds.has(
@@ -395,14 +475,16 @@ export function TeamMap({
       ) {
         marker.remove()
 
-        workerMarkersRef.current.delete(
-          workerId
-        )
+        workerMarkersRef
+          .current
+          .delete(
+            workerId
+          )
       }
     }
 
     /*
-     * Create or move current
+     * Create or move live
      * worker markers.
      */
     for (
@@ -410,10 +492,14 @@ export function TeamMap({
       activeWorkerIds
     ) {
       const worker =
-        workerById.get(workerId)
+        workerById.get(
+          workerId
+        )
 
       const location =
-        locations[workerId]
+        locations[
+          workerId
+        ]
 
       if (
         !worker ||
@@ -429,14 +515,19 @@ export function TeamMap({
         ]
 
       const existingMarker =
-        workerMarkersRef.current.get(
-          workerId
-        )
+        workerMarkersRef
+          .current
+          .get(
+            workerId
+          )
 
-      if (existingMarker) {
-        existingMarker.setLngLat(
-          coordinates
-        )
+      if (
+        existingMarker
+      ) {
+        existingMarker
+          .setLngLat(
+            coordinates
+          )
 
         continue
       }
@@ -444,20 +535,35 @@ export function TeamMap({
       const popup =
         new Popup({
           offset: 25,
-        }).setText(worker.name)
+        })
+          .setText(
+            worker.name
+          )
 
       const marker =
-        new Marker()
+        new Marker({
+          color:
+            "#2563eb",
+
+          scale:
+            1.05,
+        })
           .setLngLat(
             coordinates
           )
-          .setPopup(popup)
-          .addTo(map)
+          .setPopup(
+            popup
+          )
+          .addTo(
+            map
+          )
 
-      workerMarkersRef.current.set(
-        workerId,
-        marker
-      )
+      workerMarkersRef
+        .current
+        .set(
+          workerId,
+          marker
+        )
     }
   }, [
     locations,
@@ -465,10 +571,7 @@ export function TeamMap({
   ])
 
   /*
-   * EFFECT 4
-   *
-   * Subscribe to worker GPS updates
-   * through Supabase Realtime.
+   * Subscribe to worker GPS.
    */
   useEffect(() => {
     const channel =
@@ -480,11 +583,59 @@ export function TeamMap({
           "postgres_changes",
           {
             event: "*",
-            schema: "public",
+
+            schema:
+              "public",
+
             table:
               "current_locations",
           },
-          (payload) => {
+          (
+            payload
+          ) => {
+            /*
+             * DELETE events have no
+             * new location row.
+             */
+            if (
+              payload.eventType ===
+              "DELETE"
+            ) {
+              const oldRow =
+                payload.old as
+                  | {
+                      worker_id?:
+                        string
+                    }
+                  | undefined
+
+              if (
+                !oldRow
+                  ?.worker_id
+              ) {
+                return
+              }
+
+              setLocations(
+                (
+                  current
+                ) => {
+                  const next =
+                    {
+                      ...current,
+                    }
+
+                  delete next[
+                    oldRow.worker_id!
+                  ]
+
+                  return next
+                }
+              )
+
+              return
+            }
+
             const row =
               payload.new as
                 | RealtimeLocationRow
@@ -498,10 +649,14 @@ export function TeamMap({
             }
 
             setLocations(
-              (current) => ({
+              (
+                current
+              ) => ({
                 ...current,
 
-                [row.worker_id]: {
+                [
+                  row.worker_id
+                ]: {
                   latitude:
                     row.latitude,
 
@@ -509,7 +664,8 @@ export function TeamMap({
                     row.longitude,
 
                   accuracyMeters:
-                    row.accuracy_meters,
+                    row
+                      .accuracy_meters,
 
                   updatedAt:
                     row.updated_at,
@@ -519,7 +675,9 @@ export function TeamMap({
           }
         )
         .subscribe(
-          (status) => {
+          (
+            status
+          ) => {
             if (
               status ===
               "SUBSCRIBED"
@@ -545,33 +703,43 @@ export function TeamMap({
         )
 
     return () => {
-      void supabase.removeChannel(
-        channel
-      )
+      void supabase
+        .removeChannel(
+          channel
+        )
     }
-  }, [supabase])
+  }, [
+    supabase,
+  ])
 
-    /*
-   * EFFECT 5
+  /*
+   * Fetch OSRM route data.
    *
-   * Request road routes.
-   *
-   * GPS can update every few
-   * seconds, but routing is limited
-   * to approximately once every
-   * 30 seconds per driver.
+   * GPS may update much more
+   * frequently, but routing is
+   * throttled to roughly every
+   * 30 seconds per worker.
    */
   useEffect(() => {
     async function updateRoutes() {
-      const now = Date.now()
+      const now =
+        Date.now()
 
-      for (const worker of workers) {
-        if (worker.status !== "en_route") {
+      for (
+        const worker of
+        workers
+      ) {
+        if (
+          worker.status !==
+          "en_route"
+        ) {
           continue
         }
 
         const location =
-          locations[worker.id]
+          locations[
+            worker.id
+          ]
 
         const trip =
           worker.activeTrip
@@ -579,45 +747,57 @@ export function TeamMap({
         if (
           !location ||
           !trip ||
-          trip.destinationLatitude === null ||
-          trip.destinationLongitude === null
+          trip
+            .destinationLatitude ===
+            null ||
+          trip
+            .destinationLongitude ===
+            null
         ) {
           continue
         }
 
         const lastRequest =
-          lastRouteRequestRef.current[
+          lastRouteRequestRef
+            .current[
             worker.id
           ] ?? 0
 
         if (
-          now - lastRequest <
+          now -
+            lastRequest <
           30_000
         ) {
           continue
         }
 
-        lastRouteRequestRef.current[
+        lastRouteRequestRef
+          .current[
           worker.id
-        ] = now
+        ] =
+          now
 
         const params =
           new URLSearchParams({
-            originLat: String(
-              location.latitude
-            ),
+            originLat:
+              String(
+                location.latitude
+              ),
 
-            originLng: String(
-              location.longitude
-            ),
+            originLng:
+              String(
+                location.longitude
+              ),
 
-            destinationLat: String(
-              trip.destinationLatitude
-            ),
+            destinationLat:
+              String(
+                trip.destinationLatitude
+              ),
 
-            destinationLng: String(
-              trip.destinationLongitude
-            ),
+            destinationLng:
+              String(
+                trip.destinationLongitude
+              ),
           })
 
         try {
@@ -626,7 +806,9 @@ export function TeamMap({
               `/api/route?${params.toString()}`
             )
 
-          if (!response.ok) {
+          if (
+            !response.ok
+          ) {
             console.error(
               `Could not route ${worker.name}`
             )
@@ -635,20 +817,35 @@ export function TeamMap({
           }
 
           const routeData =
-            (await response.json()) as RouteApiResponse
+            (
+              await response
+                .json()
+            ) as
+              RouteApiResponse
 
-          const route: RouteInfo = {
+          const route:
+            RouteInfo = {
             ...routeData,
-            calculatedAt: Date.now(),
+
+            calculatedAt:
+              Date.now(),
           }
 
           setRoutes(
-            (current) => ({
+            (
+              current
+            ) => ({
               ...current,
-              [worker.id]: route,
+
+              [
+                worker.id
+              ]:
+                route,
             })
           )
-        } catch (error) {
+        } catch (
+          error
+        ) {
           console.error(
             "Route request failed:",
             error
@@ -664,10 +861,7 @@ export function TeamMap({
   ])
 
   /*
-   * EFFECT 6
-   *
-   * Draw or update road route
-   * lines on the map.
+   * Draw route lines.
    */
   useEffect(() => {
     const map =
@@ -681,7 +875,8 @@ export function TeamMap({
     }
 
     for (
-      const worker of workers
+      const worker of
+      workers
     ) {
       const sourceId =
         `route-${worker.id}`
@@ -690,20 +885,19 @@ export function TeamMap({
         `route-line-${worker.id}`
 
       const route =
-        routes[worker.id]
+        routes[
+          worker.id
+        ]
 
-      /*
-       * Remove route graphics when
-       * the worker is no longer
-       * actively travelling.
-       */
       if (
         worker.status !==
           "en_route" ||
         !route
       ) {
         if (
-          map.getLayer(layerId)
+          map.getLayer(
+            layerId
+          )
         ) {
           map.removeLayer(
             layerId
@@ -727,14 +921,16 @@ export function TeamMap({
         type:
           "Feature" as const,
 
-        properties: {},
+        properties:
+          {},
 
         geometry: {
           type:
             "LineString" as const,
 
           coordinates:
-            route.geometry
+            route
+              .geometry
               .coordinates,
         },
       }
@@ -744,10 +940,15 @@ export function TeamMap({
           sourceId
         )
 
-      if (existingSource) {
+      if (
+        existingSource
+      ) {
         (
-          existingSource as GeoJSONSource
-        ).setData(geoJson)
+          existingSource as
+            GeoJSONSource
+        ).setData(
+          geoJson
+        )
 
         continue
       }
@@ -755,17 +956,23 @@ export function TeamMap({
       map.addSource(
         sourceId,
         {
-          type: "geojson",
-          data: geoJson,
+          type:
+            "geojson",
+
+          data:
+            geoJson,
         }
       )
 
       map.addLayer({
-        id: layerId,
+        id:
+          layerId,
 
-        type: "line",
+        type:
+          "line",
 
-        source: sourceId,
+        source:
+          sourceId,
 
         layout: {
           "line-cap":
@@ -776,7 +983,8 @@ export function TeamMap({
         },
 
         paint: {
-          "line-width": 5,
+          "line-width":
+            5,
 
           "line-opacity":
             0.75,
@@ -793,13 +1001,8 @@ export function TeamMap({
   ])
 
   /*
-   * EFFECT 7
-   *
-   * Create destination markers.
-   *
-   * Each destination marker has
-   * the current ETA displayed
-   * directly above it.
+   * Destination markers and
+   * their ETA pills.
    */
   useEffect(() => {
     const map =
@@ -813,21 +1016,26 @@ export function TeamMap({
       new Set<string>()
 
     for (
-      const worker of workers
+      const worker of
+      workers
     ) {
       const trip =
         worker.activeTrip
 
       const route =
-        routes[worker.id]
+        routes[
+          worker.id
+        ]
 
       if (
         worker.status !==
           "en_route" ||
         !trip ||
-        trip.destinationLatitude ===
+        trip
+          .destinationLatitude ===
           null ||
-        trip.destinationLongitude ===
+        trip
+          .destinationLongitude ===
           null
       ) {
         continue
@@ -839,8 +1047,11 @@ export function TeamMap({
 
       const coordinates:
         [number, number] = [
-          trip.destinationLongitude,
-          trip.destinationLatitude,
+          trip
+            .destinationLongitude,
+
+          trip
+            .destinationLatitude,
         ]
 
       const minutes =
@@ -848,36 +1059,48 @@ export function TeamMap({
           ? Math.max(
               1,
               Math.round(
-                route.durationSeconds /
+                route
+                  .durationSeconds /
                   60
               )
             )
           : null
 
       const existingMarker =
-        destinationMarkersRef.current.get(
-          worker.id
-        )
-
-      if (existingMarker) {
-        existingMarker.setLngLat(
-          coordinates
-        )
-
-        const etaElement =
-          destinationEtaElementsRef.current.get(
+        destinationMarkersRef
+          .current
+          .get(
             worker.id
           )
 
-        if (etaElement) {
+      if (
+        existingMarker
+      ) {
+        existingMarker
+          .setLngLat(
+            coordinates
+          )
+
+        const etaElement =
+          destinationEtaElementsRef
+            .current
+            .get(
+              worker.id
+            )
+
+        if (
+          etaElement
+        ) {
           etaElement.textContent =
-            minutes !== null
+            minutes !==
+            null
               ? `${minutes} min`
               : "Destination"
         }
 
         const popup =
-          existingMarker.getPopup()
+          existingMarker
+            .getPopup()
 
         if (popup) {
           popup.setText(
@@ -899,9 +1122,10 @@ export function TeamMap({
       const popup =
         new Popup({
           offset: 30,
-        }).setText(
-          `${trip.customerName} · ${trip.destination}`
-        )
+        })
+          .setText(
+            `${trip.customerName} · ${trip.destination}`
+          )
 
       const marker =
         new Marker({
@@ -914,29 +1138,38 @@ export function TeamMap({
           .setLngLat(
             coordinates
           )
-          .setPopup(popup)
-          .addTo(map)
+          .setPopup(
+            popup
+          )
+          .addTo(
+            map
+          )
 
-      destinationMarkersRef.current.set(
-        worker.id,
-        marker
-      )
+      destinationMarkersRef
+        .current
+        .set(
+          worker.id,
+          marker
+        )
 
-      destinationEtaElementsRef.current.set(
-        worker.id,
-        etaElement
-      )
+      destinationEtaElementsRef
+        .current
+        .set(
+          worker.id,
+          etaElement
+        )
     }
 
     /*
-     * Remove destinations that are
-     * no longer active.
+     * Remove old destinations.
      */
     for (
       const [
         workerId,
         marker,
-      ] of destinationMarkersRef.current
+      ] of
+      destinationMarkersRef
+        .current
     ) {
       if (
         !neededWorkerIds.has(
@@ -945,13 +1178,17 @@ export function TeamMap({
       ) {
         marker.remove()
 
-        destinationMarkersRef.current.delete(
-          workerId
-        )
+        destinationMarkersRef
+          .current
+          .delete(
+            workerId
+          )
 
-        destinationEtaElementsRef.current.delete(
-          workerId
-        )
+        destinationEtaElementsRef
+          .current
+          .delete(
+            workerId
+          )
       }
     }
   }, [
@@ -960,15 +1197,8 @@ export function TeamMap({
   ])
 
   /*
-   * EFFECT 8
-   *
-   * Automatically frame both
-   * driver and destination.
-   *
-   * As the driver approaches the
-   * destination, the geographic
-   * bounds shrink, causing MapLibre
-   * to zoom in automatically.
+   * Fit the active worker and
+   * destination into the map.
    */
   useEffect(() => {
     const map =
@@ -981,16 +1211,11 @@ export function TeamMap({
       return
     }
 
-    /*
-     * For V1, follow the first
-     * active en-route worker.
-     *
-     * Later this will use whichever
-     * worker the manager selects.
-     */
     const worker =
       workers.find(
-        (candidate) => {
+        (
+          candidate
+        ) => {
           const trip =
             candidate.activeTrip
 
@@ -1002,7 +1227,9 @@ export function TeamMap({
                 candidate.id
               ]
             ) &&
-            Boolean(trip) &&
+            Boolean(
+              trip
+            ) &&
             trip
               ?.destinationLatitude !==
               null &&
@@ -1021,16 +1248,20 @@ export function TeamMap({
     }
 
     const location =
-      locations[worker.id]
+      locations[
+        worker.id
+      ]
 
     const trip =
       worker.activeTrip
 
     if (
       !location ||
-      trip.destinationLatitude ===
+      trip
+        .destinationLatitude ===
         null ||
-      trip.destinationLongitude ===
+      trip
+        .destinationLongitude ===
         null
     ) {
       return
@@ -1039,35 +1270,73 @@ export function TeamMap({
     const bounds =
       new LngLatBounds()
 
-    /*
-     * Driver
-     */
     bounds.extend([
       location.longitude,
       location.latitude,
     ])
 
-    /*
-     * Destination
-     */
     bounds.extend([
-      trip.destinationLongitude,
-      trip.destinationLatitude,
+      trip
+        .destinationLongitude,
+
+      trip
+        .destinationLatitude,
     ])
+
+    /*
+     * Use tighter framing on
+     * phones so route endpoints
+     * remain visible without
+     * wasting map space.
+     */
+    const mapWidth =
+      mapContainerRef
+        .current
+        ?.clientWidth ??
+      1000
+
+    const mobile =
+      mapWidth < 640
 
     map.fitBounds(
       bounds,
       {
-        padding: {
-          top: 110,
-          right: 90,
-          bottom: 90,
-          left: 90,
-        },
+        padding:
+          mobile
+            ? {
+                top:
+                  65,
 
-        maxZoom: 16,
+                right:
+                  45,
 
-        duration: 700,
+                bottom:
+                  55,
+
+                left:
+                  45,
+              }
+            : {
+                top:
+                  110,
+
+                right:
+                  90,
+
+                bottom:
+                  90,
+
+                left:
+                  90,
+              },
+
+        maxZoom:
+          mobile
+            ? 15
+            : 16,
+
+        duration:
+          700,
       }
     )
   }, [
@@ -1076,55 +1345,54 @@ export function TeamMap({
     workers,
   ])
 
-  /*
-   * RENDER DATA
-   */
-
   const liveWorkers =
     workers.filter(
       (worker) =>
         worker.status ===
           "en_route" &&
         Boolean(
-          locations[worker.id]
+          locations[
+            worker.id
+          ]
         )
     )
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-zinc-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-3 border-b border-zinc-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <LocateFixed className="h-4 w-4 text-zinc-500" />
+            <LocateFixed className="h-4 w-4 shrink-0 text-zinc-500" />
 
             <h2 className="font-semibold">
               Live operations
             </h2>
           </div>
 
-          <p className="mt-1 text-sm text-zinc-500">
-            Current locations from workers
-            sharing their GPS.
+          <p className="mt-1 text-sm leading-5 text-zinc-500">
+            Current locations from
+            workers sharing their
+            GPS.
           </p>
         </div>
 
         {realtimeStatus ===
         "connected" ? (
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
             <Radio className="h-3.5 w-3.5" />
 
             Realtime connected
           </div>
         ) : realtimeStatus ===
           "error" ? (
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
             <span className="h-2 w-2 rounded-full bg-red-500" />
 
             Realtime unavailable
           </div>
         ) : (
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600">
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600">
             <span className="h-2 w-2 animate-pulse rounded-full bg-zinc-400" />
 
             Connecting
@@ -1133,49 +1401,59 @@ export function TeamMap({
       </div>
 
       {/* Map */}
-      <div className="relative">
+      <div className="relative min-w-0 overflow-hidden">
         <div
-          ref={mapContainerRef}
-          className="h-[440px] w-full"
+          ref={
+            mapContainerRef
+          }
+          className="h-[300px] w-full sm:h-[380px] lg:h-[440px]"
         />
 
         {liveWorkers.length ===
           0 && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="rounded-2xl bg-white/95 px-5 py-4 text-center shadow-lg ring-1 ring-zinc-200">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+            <div className="max-w-[280px] rounded-2xl bg-white/95 px-4 py-4 text-center shadow-lg ring-1 ring-zinc-200 sm:max-w-xs sm:px-5">
               <p className="font-medium text-zinc-900">
                 Waiting for a live
                 worker
               </p>
 
-              <p className="mt-1 max-w-xs text-sm text-zinc-500">
+              <p className="mt-1 text-sm leading-5 text-zinc-500">
                 Start a worker&apos;s
-                trip and allow location
-                access to see them here.
+                trip and allow
+                location access to
+                see them here.
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Worker summary cards */}
+      {/* Live worker summaries */}
       {liveWorkers.length >
         0 && (
-        <div className="grid gap-3 border-t border-zinc-100 p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-3 border-t border-zinc-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3">
           {liveWorkers.map(
-            (worker) => {
+            (
+              worker
+            ) => {
               const location =
-                locations[worker.id]
+                locations[
+                  worker.id
+                ]
 
               const route =
-                routes[worker.id]
+                routes[
+                  worker.id
+                ]
 
               const minutes =
                 route
                   ? Math.max(
                       1,
                       Math.round(
-                        route.durationSeconds /
+                        route
+                          .durationSeconds /
                           60
                       )
                     )
@@ -1184,33 +1462,49 @@ export function TeamMap({
               const miles =
                 route
                   ? (
-                      route.distanceMeters /
+                      route
+                        .distanceMeters /
                       1609.344
-                    ).toFixed(1)
+                    ).toFixed(
+                      1
+                    )
                   : null
 
               const arrival =
                 route
-                    ? new Date(
-                        route.calculatedAt +
-                        route.durationSeconds *
-                            1000
+                  ? new Date(
+                      route
+                        .calculatedAt +
+                        route
+                          .durationSeconds *
+                          1000
                     )
-                    : null
+                  : null
 
               return (
                 <div
-                  key={worker.id}
-                  className="rounded-2xl bg-zinc-50 px-5 py-4"
+                  key={
+                    worker.id
+                  }
+                  className="min-w-0 overflow-hidden rounded-2xl bg-zinc-50 p-4 sm:px-5"
                 >
-                  <div className="flex items-start justify-between gap-6">
-                    {/* Driver identity */}
-                    <div>
-                      <p className="font-medium text-zinc-950">
-                        {worker.name}
-                      </p>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate font-medium text-zinc-950">
+                          {
+                            worker.name
+                          }
+                        </p>
 
-                      <p className="mt-1 text-xs text-zinc-500">
+                        <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-emerald-700">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+
+                          Live
+                        </div>
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-zinc-500">
                         {location
                           .accuracyMeters !==
                         null
@@ -1222,53 +1516,59 @@ export function TeamMap({
                       </p>
                     </div>
 
-                    {/* ETA + Live */}
-                    {route ? (
-                      <div className="text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <p className="text-2xl font-semibold tracking-tight text-zinc-950">
-                            {minutes} min
-                          </p>
+                    {route && (
+                      <div className="shrink-0 text-right">
+                        <p className="text-xl font-semibold tracking-tight text-zinc-950 sm:text-2xl">
+                          {minutes} min
+                        </p>
 
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-
-                            Live
-                          </div>
-                        </div>
-
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="text-[11px] text-zinc-500">
                           ETA
                         </p>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-
-                        Live
                       </div>
                     )}
                   </div>
 
-                  {/* Distance + arrival */}
+                  {worker
+                    .activeTrip && (
+                    <div className="mt-3 min-w-0 rounded-xl bg-white px-3 py-2.5 ring-1 ring-zinc-200">
+                      <p className="truncate text-xs font-medium text-zinc-700">
+                        {
+                          worker
+                            .activeTrip
+                            .customerName
+                        }
+                      </p>
+
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-zinc-500">
+                        {
+                          worker
+                            .activeTrip
+                            .destination
+                        }
+                      </p>
+                    </div>
+                  )}
+
                   {route && (
-                    <div className="mt-4 flex items-center justify-between border-t border-zinc-200 pt-3 text-sm">
-                      <span className="font-medium text-zinc-700">
+                    <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-zinc-200 pt-3 text-xs sm:text-sm">
+                      <span className="shrink-0 font-medium text-zinc-700">
                         {miles} mi away
                       </span>
 
-                      <span className="text-zinc-500">
+                      <span className="min-w-0 truncate text-right text-zinc-500">
                         Arrive{" "}
-                        {arrival?.toLocaleTimeString(
-                          [],
-                          {
-                            hour:
-                              "numeric",
+                        {arrival
+                          ?.toLocaleTimeString(
+                            [],
+                            {
+                              hour:
+                                "numeric",
 
-                            minute:
-                              "2-digit",
-                          }
-                        )}
+                              minute:
+                                "2-digit",
+                            }
+                          )}
                       </span>
                     </div>
                   )}
