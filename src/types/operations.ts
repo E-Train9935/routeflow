@@ -16,23 +16,42 @@ export type TripSummary = {
 
   destinationLongitude:
     number | null
+
+  createdAt: string
 }
 
 export type WorkerLocation = {
   latitude: number
   longitude: number
-  accuracyMeters: number | null
+
+  accuracyMeters:
+    number | null
+
   updatedAt: string
 }
 
 export type WorkerCardData = {
   id: string
+
   name: string
+
   initials: string
+
   role: string
+
   status: WorkerStatus
 
+  /*
+   * The trip currently being worked,
+   * or the first trip waiting to start.
+   */
   activeTrip?: TripSummary
+
+  /*
+   * Additional ASSIGNED trips waiting
+   * behind activeTrip.
+   */
+  queuedTrips: TripSummary[]
 
   currentLocation?: WorkerLocation
 }

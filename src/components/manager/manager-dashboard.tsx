@@ -28,6 +28,7 @@ import {
 } from "@/lib/supabase/client"
 
 import type {
+  TripSummary,
   WorkerCardData,
   WorkerStatus,
 } from "@/types/operations"
@@ -37,14 +38,15 @@ type Props = {
   managerName: string
 }
 
-type RealtimeTripRow = {
+type OpenTripRow = {
   id: string
 
   worker_id: string
 
   customer_name: string
 
-  destination_address: string
+  destination_address:
+    string
 
   destination_latitude:
     number | null
@@ -56,8 +58,8 @@ type RealtimeTripRow = {
     | "assigned"
     | "en_route"
     | "arrived"
-    | "completed"
-    | "cancelled"
+
+  created_at: string
 }
 
 type TripRealtimeStatus =
@@ -65,52 +67,238 @@ type TripRealtimeStatus =
   | "connected"
   | "error"
 
+function toTripSummary(
+  trip: OpenTripRow
+): TripSummary {
+  return {
+    id:
+      trip.id,
+
+    customerName:
+      trip.customer_name,
+
+    destination:
+      trip.destination_address,
+
+    destinationLatitude:
+      trip.destination_latitude,
+
+    destinationLongitude:
+      trip.destination_longitude,
+
+    createdAt:
+      trip.created_at,
+  }
+}
+
+function applyTripsToWorker(
+  worker: WorkerCardData,
+  allTrips: OpenTripRow[]
+): WorkerCardData {
+  const workerTrips =
+    allTrips.filter(
+      (trip) =>
+        trip.worker_id ===
+        worker.id
+    )
+
+  /*
+   * An active journey wins.
+   *
+   * Otherwise the first assigned
+   * trip is the next job.
+   */
+  const currentTrip =
+    workerTrips.find(
+      (trip) =>
+        trip.status ===
+          "en_route" ||
+        trip.status ===
+          "arrived"
+    ) ??
+    workerTrips.find(
+      (trip) =>
+        trip.status ===
+        "assigned"
+    )
+
+  const queuedTrips =
+    workerTrips
+      .filter(
+        (trip) =>
+          trip.status ===
+            "assigned" &&
+          trip.id !==
+            currentTrip?.id
+      )
+      .map(
+        toTripSummary
+      )
+
+  return {
+    ...worker,
+
+    status:
+      currentTrip
+        ? (
+            currentTrip.status as
+              WorkerStatus
+          )
+        : "available",
+
+    activeTrip:
+      currentTrip
+        ? toTripSummary(
+            currentTrip
+          )
+        : undefined,
+
+    queuedTrips,
+
+    /*
+     * Keep initial GPS data only
+     * while this worker is en route.
+     *
+     * TeamMap has its own realtime
+     * location subscription.
+     */
+    currentLocation:
+      currentTrip?.status ===
+        "en_route"
+        ? worker.currentLocation
+        : undefined,
+  }
+}
+
 export function ManagerDashboard({
   workers,
   managerName,
 }: Props) {
-  /*
-   * Supabase browser client.
-   */
   const [supabase] =
-    useState(() => createClient())
-
-  /*
-   * Local realtime copy of
-   * the manager's team.
-   */
-  const [team, setTeam] =
-    useState<WorkerCardData[]>(
-      workers
+    useState(
+      () =>
+        createClient()
     )
+
+  const [
+    team,
+    setTeam,
+  ] =
+    useState<
+      WorkerCardData[]
+    >(workers)
 
   const [
     newTripOpen,
     setNewTripOpen,
-  ] = useState(false)
+  ] =
+    useState(false)
 
   const [
     tripRealtimeStatus,
     setTripRealtimeStatus,
   ] =
-    useState<TripRealtimeStatus>(
-      "connecting"
-    )
+    useState<
+      TripRealtimeStatus
+    >("connecting")
 
   /*
-   * Subscribe to trip changes.
+   * Listen for any trip lifecycle
+   * change in this manager's
+   * organization.
    *
-   * This is what lets the manager
-   * see Sarah transition:
+   * Rather than trying to mutate
+   * one worker card from one event,
+   * reload the small open-trip set.
    *
-   * ASSIGNED
-   * -> EN ROUTE
-   * -> ARRIVED
-   * -> AVAILABLE
-   *
-   * without refreshing.
+   * This correctly handles queues.
    */
   useEffect(() => {
+    let mounted = true
+
+    let latestRequest = 0
+
+    async function refreshTeamTrips() {
+      const requestNumber =
+        ++latestRequest
+
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("trips")
+          .select(
+            `
+              id,
+              worker_id,
+              customer_name,
+              destination_address,
+              destination_latitude,
+              destination_longitude,
+              status,
+              created_at
+            `
+          )
+          .in(
+            "status",
+            [
+              "assigned",
+              "en_route",
+              "arrived",
+            ]
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                true,
+            }
+          )
+          .order(
+            "id",
+            {
+              ascending:
+                true,
+            }
+          )
+
+      if (
+        !mounted ||
+        requestNumber !==
+          latestRequest
+      ) {
+        return
+      }
+
+      if (error) {
+        console.error(
+          "Could not refresh trip queues:",
+          error
+        )
+
+        return
+      }
+
+      const openTrips =
+        (
+          data ?? []
+        ) as OpenTripRow[]
+
+      setTeam(
+        (
+          currentTeam
+        ) =>
+          currentTeam.map(
+            (worker) =>
+              applyTripsToWorker(
+                worker,
+                openTrips
+              )
+          )
+      )
+    }
+
     const channel =
       supabase
         .channel(
@@ -123,109 +311,8 @@ export function ManagerDashboard({
             schema: "public",
             table: "trips",
           },
-          (payload) => {
-            const row =
-              payload.new as
-                | RealtimeTripRow
-                | undefined
-
-            /*
-             * We don't currently
-             * delete trip records,
-             * so events without a
-             * new worker row can
-             * simply be ignored.
-             */
-            if (
-              !row ||
-              !row.worker_id
-            ) {
-              return
-            }
-
-            setTeam(
-              (currentTeam) =>
-                currentTeam.map(
-                  (worker) => {
-                    if (
-                      worker.id !==
-                      row.worker_id
-                    ) {
-                      return worker
-                    }
-
-                    /*
-                     * Finished trips
-                     * mean this worker
-                     * becomes available
-                     * again.
-                     */
-                    if (
-                      row.status ===
-                        "completed" ||
-                      row.status ===
-                        "cancelled"
-                    ) {
-                      return {
-                        ...worker,
-
-                        status:
-                          "available",
-
-                        activeTrip:
-                          undefined,
-
-                        /*
-                         * Prevent any
-                         * server snapshot
-                         * location from
-                         * appearing stale.
-                         */
-                        currentLocation:
-                          undefined,
-                      }
-                    }
-
-                    /*
-                     * Open trip.
-                     */
-                    if (
-                      row.status ===
-                        "assigned" ||
-                      row.status ===
-                        "en_route" ||
-                      row.status ===
-                        "arrived"
-                    ) {
-                      return {
-                        ...worker,
-
-                        status:
-                          row.status as WorkerStatus,
-
-                        activeTrip: {
-                          id:
-                            row.id,
-
-                          customerName:
-                            row.customer_name,
-
-                          destination:
-                            row.destination_address,
-
-                          destinationLatitude:
-                            row.destination_latitude,
-
-                          destinationLongitude:
-                            row.destination_longitude,
-                        },
-                      }
-                    }
-
-                    return worker
-                  }
-                )
-            )
+          () => {
+            void refreshTeamTrips()
           }
         )
         .subscribe(
@@ -237,6 +324,13 @@ export function ManagerDashboard({
               setTripRealtimeStatus(
                 "connected"
               )
+
+              /*
+               * Close the tiny gap
+               * between server render
+               * and realtime subscribe.
+               */
+              void refreshTeamTrips()
 
               return
             }
@@ -255,17 +349,16 @@ export function ManagerDashboard({
         )
 
     return () => {
+      mounted = false
+
       void supabase.removeChannel(
         channel
       )
     }
-  }, [supabase])
+  }, [
+    supabase,
+  ])
 
-  /*
-   * Dashboard metrics now use
-   * realtime team state instead
-   * of the original server props.
-   */
   const available =
     team.filter(
       (worker) =>
@@ -273,12 +366,25 @@ export function ManagerDashboard({
         "available"
     ).length
 
-  const assigned =
-    team.filter(
-      (worker) =>
-        worker.status ===
-        "assigned"
-    ).length
+  /*
+   * Count JOBS rather than workers.
+   */
+  const queuedTripCount =
+    team.reduce(
+      (
+        total,
+        worker
+      ) =>
+        total +
+        worker.queuedTrips.length +
+        (
+          worker.status ===
+          "assigned"
+            ? 1
+            : 0
+        ),
+      0
+    )
 
   const active =
     team.filter(
@@ -295,14 +401,17 @@ export function ManagerDashboard({
       .filter(Boolean)
       .slice(0, 2)
       .map(
-        (name) => name[0]
+        (
+          name:
+            string
+        ) =>
+          name[0]
       )
       .join("")
       .toUpperCase()
 
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-950">
-      {/* Header */}
+    <main className="min-h-screen overflow-x-hidden bg-zinc-50 text-zinc-950">
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -316,7 +425,6 @@ export function ManagerDashboard({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Trip realtime status */}
             {tripRealtimeStatus ===
             "connected" ? (
               <div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:flex">
@@ -347,7 +455,6 @@ export function ManagerDashboard({
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        {/* Dashboard heading */}
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-medium text-zinc-500">
@@ -359,16 +466,18 @@ export function ManagerDashboard({
             </h1>
 
             <p className="mt-2 text-sm text-zinc-500">
-              Track availability,
-              assignments, active trips,
-              and customer ETAs.
+              Dispatch jobs, manage
+              worker queues, and track
+              active customer ETAs.
             </p>
           </div>
 
           <button
             type="button"
             onClick={() =>
-              setNewTripOpen(true)
+              setNewTripOpen(
+                true
+              )
             }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800"
           >
@@ -378,11 +487,12 @@ export function ManagerDashboard({
           </button>
         </div>
 
-        {/* Summary */}
         <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryCard
             label="Team members"
-            value={team.length}
+            value={
+              team.length
+            }
             icon={
               <Users className="h-4 w-4" />
             }
@@ -390,15 +500,19 @@ export function ManagerDashboard({
 
           <SummaryCard
             label="Available"
-            value={available}
+            value={
+              available
+            }
             icon={
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
             }
           />
 
           <SummaryCard
-            label="Assigned"
-            value={assigned}
+            label="Queued trips"
+            value={
+              queuedTripCount
+            }
             icon={
               <span className="h-2 w-2 rounded-full bg-violet-500" />
             }
@@ -406,21 +520,23 @@ export function ManagerDashboard({
 
           <SummaryCard
             label="Active"
-            value={active}
+            value={
+              active
+            }
             icon={
               <Radio className="h-4 w-4" />
             }
           />
         </section>
 
-        {/* Live operations map */}
         <section className="mt-8">
           <TeamMap
-            workers={team}
+            workers={
+              team
+            }
           />
         </section>
 
-        {/* Team */}
         <section className="mt-10">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold">
@@ -432,12 +548,16 @@ export function ManagerDashboard({
             </span>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {team.map(
               (worker) => (
                 <WorkerCard
-                  key={worker.id}
-                  worker={worker}
+                  key={
+                    worker.id
+                  }
+                  worker={
+                    worker
+                  }
                 />
               )
             )}
@@ -445,12 +565,17 @@ export function ManagerDashboard({
         </section>
       </div>
 
-      {/* Create trip */}
       <NewTripModal
-        open={newTripOpen}
-        workers={team}
+        open={
+          newTripOpen
+        }
+        workers={
+          team
+        }
         onClose={() =>
-          setNewTripOpen(false)
+          setNewTripOpen(
+            false
+          )
         }
       />
     </main>
