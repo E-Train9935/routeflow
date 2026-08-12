@@ -18,6 +18,8 @@ export type TripSummary = {
     number | null
 
   createdAt: string
+
+  routePosition: number | null
 }
 
 export type WorkerLocation = {

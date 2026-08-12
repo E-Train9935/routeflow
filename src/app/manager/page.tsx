@@ -114,7 +114,8 @@ export default async function ManagerPage() {
           destination_latitude,
           destination_longitude,
           status,
-          created_at
+          created_at,
+          route_position
         `
       )
       .in(
@@ -124,6 +125,14 @@ export default async function ManagerPage() {
           "en_route",
           "arrived",
         ]
+      )
+
+      .order(
+        "route_position",
+        {
+            ascending: true,
+            nullsFirst: false,
+        }
       )
       .order(
         "created_at",
@@ -249,6 +258,9 @@ export default async function ManagerPage() {
 
       createdAt:
         trip.created_at,
+
+      routePosition:
+        trip.route_position,
     }
   }
 

@@ -78,7 +78,8 @@ export default async function WorkerPage() {
           customer_name,
           destination_address,
           status,
-          created_at
+          created_at,
+          route_position
         `
       )
       .eq(
@@ -92,6 +93,16 @@ export default async function WorkerPage() {
           "en_route",
           "arrived",
         ]
+      )
+      .order(
+        "route_position",
+        {
+            ascending:
+            true,
+
+            nullsFirst:
+            false,
+        }
       )
       .order(
         "created_at",

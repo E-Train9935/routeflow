@@ -40,6 +40,8 @@ export type WorkerTripRow = {
     | "arrived"
 
   created_at: string
+  route_position:
+    number | null
 }
 
 type Props = {
@@ -106,7 +108,8 @@ export function WorkerDashboard({
               customer_name,
               destination_address,
               status,
-              created_at
+              created_at,
+              route_position
             `
           )
           .eq(
@@ -120,6 +123,16 @@ export function WorkerDashboard({
               "en_route",
               "arrived",
             ]
+          )
+          .order(
+            "route_position",
+            {
+                ascending:
+                true,
+
+                nullsFirst:
+                false,
+            }
           )
           .order(
             "created_at",

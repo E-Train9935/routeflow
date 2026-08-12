@@ -33,6 +33,10 @@ import type {
   WorkerStatus,
 } from "@/types/operations"
 
+import {
+  RoutePlanner,
+} from "@/components/manager/route-planner"
+
 type Props = {
   workers: WorkerCardData[]
   managerName: string
@@ -60,6 +64,8 @@ type OpenTripRow = {
     | "arrived"
 
   created_at: string
+  route_position:
+    number | null
 }
 
 type TripRealtimeStatus =
@@ -88,6 +94,8 @@ function toTripSummary(
 
     createdAt:
       trip.created_at,
+    routePosition:
+      trip.route_position,
   }
 }
 
@@ -237,7 +245,8 @@ export function ManagerDashboard({
               destination_latitude,
               destination_longitude,
               status,
-              created_at
+              created_at,
+              route_position
             `
           )
           .in(
@@ -248,6 +257,17 @@ export function ManagerDashboard({
               "arrived",
             ]
           )
+          .order(
+            "route_position",
+            {
+                ascending:
+                true,
+
+                nullsFirst:
+                false,
+            }
+          )
+
           .order(
             "created_at",
             {
@@ -535,6 +555,14 @@ export function ManagerDashboard({
               team
             }
           />
+        </section>
+
+        <section className="mt-8">
+            <RoutePlanner
+                workers={
+                  team
+                }
+            />
         </section>
 
         <section className="mt-10">
